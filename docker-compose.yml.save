@@ -1,0 +1,83 @@
+version: '3.8'
+
+networks:
+  monitoring:
+    driver: bridge
+
+services:
+  # Модуль 3: База данных
+  db:
+    image: postgres:15
+    restart: always
+    
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: lab_db
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - monitoring
+
+  # Модуль 4: Бэкенд
+  backend:
+    build: ./backend
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_NAME: lab_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    depends_on:
+      - db
+    networks:
+      - monitoring
+
+  # Модуль 2: Прокси и Фронтенд
+  nginx:
+    image: nginx:latest
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/html
+    depends_on:
+      - backend
+    networks:
+      - monitoring
+
+  # Мониторинг: Сборщик метрик системы
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    expose:
+      - 9100
+    networks:
+      - monitoring
+
+  # Мониторинг: База данных метрик
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+
+  # Мониторинг: Визуализация
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring
+
+volumes:
+  db_data:

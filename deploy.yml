@@ -1,0 +1,36 @@
+---
+- name: Deploy Tuning Project Infrastructure
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install dependencies for Docker
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+        state: present
+
+    - name: Ensure Docker and Docker Compose are installed
+      shell: |
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sh get-docker.sh
+      args:
+        creates: /usr/bin/docker
+
+    - name: Copy project files (Optional if already there)
+      debug:
+        msg: "Infrastructure is being tuned..."
+
+    - name: Run Docker Compose
+      community.docker.docker_compose_v2:
+        project_src: /home/ayau/final_lab
+        state: present
